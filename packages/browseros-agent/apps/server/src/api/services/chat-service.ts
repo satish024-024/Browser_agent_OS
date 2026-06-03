@@ -280,14 +280,16 @@ export class ChatService {
         conversationId: request.conversationId,
         count: request.toolApprovalResponses.length,
       })
-      return createAgentUIStreamResponse({
-        agent: session.agent.toolLoopAgent,
-        uiMessages: filterValidMessages(session.agent.messages),
-        abortSignal,
-        onFinish: async ({ messages }: { messages: UIMessage[] }) => {
-          session.agent.messages = filterValidMessages(messages)
-        },
-      })
+      return wrapWithHeartbeat(
+        createAgentUIStreamResponse({
+          agent: session.agent.toolLoopAgent,
+          uiMessages: filterValidMessages(session.agent.messages),
+          abortSignal,
+          onFinish: async ({ messages }: { messages: UIMessage[] }) => {
+            session.agent.messages = filterValidMessages(messages)
+          },
+        }),
+      )
     }
 
     const messageContext = request.isScheduledTask
@@ -333,36 +335,38 @@ export class ChatService {
           : msg,
     )
 
-    return createAgentUIStreamResponse({
-      agent: session.agent.toolLoopAgent,
-      uiMessages: promptUiMessages,
-      abortSignal,
-      onFinish: async ({ messages }: { messages: UIMessage[] }) => {
-        // The agent loop returns `messages` containing the prompt-
-        // wrapped user text. Restore the raw form before persisting
-        // so subsequent turns see the clean text and the client's
-        // local UIMessage matches what was originally typed.
-        const restored = messages.map((msg) =>
-          msg.id === wrappedUserMessageId && msg.role === 'user'
-            ? {
-                ...msg,
-                parts: [{ type: 'text' as const, text: request.message }],
-              }
-            : msg,
-        )
-        session.agent.messages = filterValidMessages(restored)
-        logger.info('Agent execution complete', {
-          conversationId: request.conversationId,
-          totalMessages: restored.length,
-        })
+    return wrapWithHeartbeat(
+      createAgentUIStreamResponse({
+        agent: session.agent.toolLoopAgent,
+        uiMessages: promptUiMessages,
+        abortSignal,
+        onFinish: async ({ messages }: { messages: UIMessage[] }) => {
+          // The agent loop returns `messages` containing the prompt-
+          // wrapped user text. Restore the raw form before persisting
+          // so subsequent turns see the clean text and the client's
+          // local UIMessage matches what was originally typed.
+          const restored = messages.map((msg) =>
+            msg.id === wrappedUserMessageId && msg.role === 'user'
+              ? {
+                  ...msg,
+                  parts: [{ type: 'text' as const, text: request.message }],
+                }
+              : msg,
+          )
+          session.agent.messages = filterValidMessages(restored)
+          logger.info('Agent execution complete', {
+            conversationId: request.conversationId,
+            totalMessages: restored.length,
+          })
 
-        if (session?.hiddenPageId) {
-          const pageId = session.hiddenPageId
-          session.hiddenPageId = undefined
-          this.closeHiddenPage(pageId, request.conversationId)
-        }
-      },
-    })
+          if (session?.hiddenPageId) {
+            const pageId = session.hiddenPageId
+            session.hiddenPageId = undefined
+            this.closeHiddenPage(pageId, request.conversationId)
+          }
+        },
+      }),
+    )
   }
 
   async deleteSession(
@@ -493,4 +497,41 @@ export class ChatService {
         : null
     return [klavisState, ...managed, ...custom].filter(Boolean).join(',')
   }
+}
+
+function wrapWithHeartbeat(response: Response): Response {
+  const original = response.body
+  if (!original) return response
+
+  const encoder = new TextEncoder()
+  const HEARTBEAT_INTERVAL_MS = 15_000
+
+  const wrapped = new ReadableStream({
+    async start(controller) {
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(': keep-alive\n\n'))
+        } catch {
+          clearInterval(heartbeat)
+        }
+      }, HEARTBEAT_INTERVAL_MS)
+
+      const reader = original.getReader()
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          controller.enqueue(value)
+        }
+      } finally {
+        clearInterval(heartbeat)
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(wrapped, {
+    headers: response.headers,
+    status: response.status,
+  })
 }

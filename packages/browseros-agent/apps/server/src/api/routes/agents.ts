@@ -606,6 +606,13 @@ function streamTurnFrames(
     const reader = frames.getReader()
     const encoder = new TextEncoder()
     let completed = false
+
+    // Periodic heartbeat to prevent browser/OS connection idle timeouts
+    const HEARTBEAT_INTERVAL_MS = 15_000 // 15 seconds
+    const heartbeatInterval = setInterval(() => {
+      s.write(encoder.encode(': keep-alive\n\n')).catch(() => {})
+    }, HEARTBEAT_INTERVAL_MS)
+
     try {
       while (true) {
         const { done, value } = await reader.read()
@@ -619,6 +626,7 @@ function streamTurnFrames(
       await s.write(encoder.encode('data: [DONE]\n\n'))
       completed = true
     } finally {
+      clearInterval(heartbeatInterval)
       if (completed) {
         reader.releaseLock()
       } else {

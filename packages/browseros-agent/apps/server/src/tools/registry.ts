@@ -63,6 +63,7 @@ import {
   ungroup_tabs,
   update_tab_group,
 } from './tab-groups'
+import { servicenow_ask, servicenow_search } from './rag'
 import { createRegistry } from './tool-registry'
 import {
   activate_window,
@@ -155,4 +156,8 @@ export const registry = createRegistry([
   // Nudges (2)
   suggest_schedule,
   suggest_app_connection,
+
+  // ServiceNow Knowledge Base RAG (2)
+  servicenow_search,
+  servicenow_ask,
 ])
