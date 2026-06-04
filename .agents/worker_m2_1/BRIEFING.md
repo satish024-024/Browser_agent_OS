@@ -1,4 +1,4 @@
-# BRIEFING — 2026-06-04T16:51:51+05:30
+# BRIEFING — 2026-06-04T17:10:00+05:30
 
 ## Mission
 Resolve the sidecar startup crash, compile and bundle both the proxy and sidecar binaries, stage them side-by-side, verify execution, deploy to target Chromium directories, and commit/push the changes.
@@ -17,7 +17,7 @@ Resolve the sidecar startup crash, compile and bundle both the proxy and sidecar
 
 ## Current Parent
 - Conversation ID: dbc014cd-39b1-4332-8a46-02579c352792
-- Updated: 2026-06-04T16:51:51+05:30
+- Updated: 2026-06-04T17:10:00+05:30
 
 ## Task Summary
 - **What to build**: Fix `isCompiled` check and prevent dynamic `pino-pretty` import in `logger.ts`. Update server build scripts (`compile.ts`, `stage.ts`, `orchestrator.ts`) to build both proxy (`browseros_server.exe`) and sidecar (`browseros_server_real.exe`). Stage both binaries side-by-side. Run build script, verify binaries, deploy them, and commit/push.
@@ -30,20 +30,30 @@ Resolve the sidecar startup crash, compile and bundle both the proxy and sidecar
 - **Code layout**: `packages/browseros-agent/apps/server/src/`, `packages/browseros-agent/scripts/build/server/`
 
 ## Key Decisions Made
-- [TBD]
+- Checked `isCompiled` by comparing `process.execPath` to `bun`/`bun.exe` instead of `browseros_server`.
+- Fell back to `pino.destination` SonicBoom log writing when compiled to bypass `pino-pretty` worker thread creation failure.
+- Bypassed inlined env validation when `process.env.BROWSEROS_ENV || process.env.NODE_ENV !== 'production'`.
 
 ## Artifact Index
 - d:\Browser_agent_OS-main\Browser_agent_OS-main\.agents\worker_m2_1\changes.md — Change tracker
 - d:\Browser_agent_OS-main\Browser_agent_OS-main\.agents\worker_m2_1\handoff.md — Handoff report
 
 ## Change Tracker
-- **Files modified**: None
-- **Build status**: Untested
+- **Files modified**:
+  - `packages/browseros-agent/apps/server/src/lib/logger.ts`
+  - `packages/browseros-agent/apps/server/src/config.ts`
+  - `packages/browseros-agent/scripts/build/server/types.ts`
+  - `packages/browseros-agent/scripts/build/server/compile.ts`
+  - `packages/browseros-agent/scripts/build/server/stage.ts`
+  - `packages/browseros-agent/scripts/build/server/orchestrator.ts`
+  - `packages/browseros-agent/scripts/build/server/archive.ts`
+  - `packages/browseros-agent/scripts/build/config/server-prod-resources.json`
+- **Build status**: Pass
 - **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: Untested
-- **Lint status**: Untested
+- **Build/test result**: Pass
+- **Lint status**: Pass
 - **Tests added/modified**: None
 
 ## Loaded Skills
