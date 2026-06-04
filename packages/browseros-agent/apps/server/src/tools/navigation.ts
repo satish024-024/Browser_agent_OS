@@ -54,9 +54,28 @@ export const list_pages = defineNavigationTool({
       return
     }
 
-    const lines = pages.map(
-      (p) => `${p.pageId}. ${p.title} (tab ${p.tabId})\n   ${p.url}`,
-    )
+    // Fetch window info so we can flag pages that belong to popup windows.
+    // ServiceNow reference-field lookups open via window.open() which creates
+    // a new popup window — the agent must know which page to switch to.
+    let popupWindowIds: Set<number>
+    try {
+      const windows = await ctx.browser.listWindows()
+      popupWindowIds = new Set(
+        windows
+          .filter(
+            (w) => w.windowType === 'popup' || w.windowType === 'app_popup',
+          )
+          .map((w) => w.windowId),
+      )
+    } catch {
+      popupWindowIds = new Set()
+    }
+
+    const lines = pages.map((p) => {
+      const isPopup = p.windowId !== undefined && popupWindowIds.has(p.windowId)
+      const popupTag = isPopup ? ' [POPUP WINDOW — switch here!]' : ''
+      return `${p.pageId}. ${p.title}${popupTag} (tab ${p.tabId})\n   ${p.url}`
+    })
     response.text(lines.join('\n\n'))
     response.data({ pages, count: pages.length })
   },
