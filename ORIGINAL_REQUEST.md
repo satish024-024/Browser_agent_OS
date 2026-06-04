@@ -45,3 +45,33 @@ After every completed task, commit and push to GitHub. Keep commits small and lo
 ### Security & Maintainability
 - [ ] No API keys, credentials, or sensitive configurations are hardcoded or leaked in logs.
 - [ ] A clean git recovery and rollback strategy is verified.
+
+## Follow-up — 2026-06-04T17:36:30+05:30
+
+# Teamwork Project Prompt — ServiceNow AI Agent Stabilization (Full Sprint)
+
+> Status: **Launched** — Full 10-hour stabilization sprint  
+> Integrity mode: development
+
+Make the ServiceNow AI Agent codebase production-ready, stable, secure, and maintainable. The system must retrieve and apply real ServiceNow documentation, generate reliable step-by-step task plans, and work with BrowserOS. Two milestones are already done — this sprint resumes from Milestone 3.
+
+Working directory: `d:/Browser_agent_OS-main/Browser_agent_OS-main`
+
+### CRITICAL CONTEXT — What Is Already Done (DO NOT REDO)
+- Milestone 1 & 2 completed — commit `f24666b1` pushed to GitHub
+- `logger.ts` patched: `isCompiled` detection prevents `pino-pretty` crash
+- `config.ts` patched: `BROWSEROS_ENV` env var bypasses production validation
+- Both binaries compiled and staged:
+  - `browseros_server.exe` (114 MB) - proxy
+  - `browseros_server_real.exe` (121 MB) - sidecar
+- All services currently STOPPED after server restart
+
+### Sprint resumes from Milestone 3 with 8 phases:
+- R1: Full System Audit
+- R2: Service Stack Restore (Ollama→RAG→Chromium→Proxy)
+- R3: Proxy→Sidecar CDP handshake audit & fix
+- R4: Security & Safety Review
+- R5: RAG Retrieval Quality Verification (5 queries, CPU-safe)
+- R6: Planning Validation (3 tasks, CPU-adjusted, gemma3:4b)
+- R7: Git Safety (commit after each phase)
+- R8: Final Report to D:\knowledge_base\docs\ValidationReport.md

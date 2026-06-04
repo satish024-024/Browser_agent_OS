@@ -1,25 +1,29 @@
-# BRIEFING — 2026-06-04T16:46:16+05:30
+# BRIEFING — 2026-06-04T17:36:30+05:30
 
 ## Mission
-Stabilize and complete the ServiceNow AI Agent project, monitor orchestrator progress, check liveness, and run the mandatory Victory Audit upon completion.
+Sprint 2: Resume ServiceNow AI Agent stabilization from Milestone 3. Services stopped, new orchestrator spawned. Monitor progress, run mandatory Victory Audit on completion.
 
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: d:\Browser_agent_OS-main\Browser_agent_OS-main\.agents\
-- Orchestrator: dbc014cd-39b1-4332-8a46-02579c352792
+- Orchestrator: d94fd1c4-08a8-4a57-8d7b-05f14e95a28c (Sprint 2 — spawned 2026-06-04T17:39Z)
 - Victory Auditor: TBD
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
 - Victory Audit is MANDATORY before reporting completion
+- CPU-only machine, no GPU — max 3 LLM calls in validation
+- Do NOT redo Milestone 1 or 2 (logger.ts + config.ts fixes already done, binaries deployed)
+- Use --no-verify on all git commits (lefthook bash hooks break on Windows)
 
 ## User Context
-- **Last user request**: Stabilize and complete ServiceNow AI Agent project, resolve RAG-intercepting proxy stability and sidecar startup/module resolution, review security/safety, run 12 tasks test suite, keep git safety commits.
+- **Last user request**: Full 10-hour stabilization sprint (Milestone 3 onward): audit, restore services, fix proxy→sidecar CDP handshake, security review, RAG verification, planning validation (3 tasks only), git commits, final report
 - **Pending clarifications**: [none]
-- **Delivered results**: [none]
+- **Delivered results**: [none this sprint]
 
 ## Project Status
-- **Phase**: in progress
+- **Phase**: in progress (Sprint 2 starting)
+- **Last known state**: Old orchestrator died after server restart. Milestones 1+2 done (commit f24666b1). All services STOPPED.
 
 ## Victory Audit Status
 - **Triggered**: no
@@ -27,10 +31,7 @@ Stabilize and complete the ServiceNow AI Agent project, monitor orchestrator pro
 - **Retry count**: 0
 
 ## Artifact Index
-- d:\Browser_agent_OS-main\Browser_agent_OS-main\ORIGINAL_REQUEST.md — Authoritative record of user intent
-- d:\Browser_agent_OS-main\Browser_agent_OS-main\.agents\original_prompt.md — Copy of the original user prompt with timestamp
-- d:\Browser_agent_OS-main\Browser_agent_OS-main\.agents\BRIEFING.md — Persistent memory of the Sentinel
-
-## Cron Tasks
-- **Progress Reporting Cron**: Task ID `6c7060f5-0843-404b-aba0-be3ef2735b10/task-17` (Interval: */8 * * * *)
-- **Liveness Check Cron**: Task ID `6c7060f5-0843-404b-aba0-be3ef2735b10/task-19` (Interval: */10 * * * *)
+- d:\Browser_agent_OS-main\Browser_agent_OS-main\ORIGINAL_REQUEST.md — Authoritative record of user intent (updated)
+- d:\Browser_agent_OS-main\Browser_agent_OS-main\.agents\BRIEFING.md — Sentinel persistent memory
+- d:\Browser_agent_OS-main\Browser_agent_OS-main\.agents\orchestrator\progress.md — Orchestrator progress tracker
+- D:\knowledge_base\docs\ValidationReport.md — Final report destination
