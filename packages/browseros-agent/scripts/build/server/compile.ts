@@ -9,13 +9,21 @@ import type { BuildTarget, CompiledServerBinary } from './types'
 const DIST_PROD_ROOT = 'dist/prod/server'
 const TMP_ROOT = join(DIST_PROD_ROOT, '.tmp')
 const BUNDLE_DIR = join(TMP_ROOT, 'bundle')
-const BUNDLE_ENTRY = join(BUNDLE_DIR, 'index.js')
+const BUNDLE_ENTRY_PROXY = join(BUNDLE_DIR, 'proxy.js')
+const BUNDLE_ENTRY_SIDECAR = join(BUNDLE_DIR, 'index.js')
 const BINARIES_DIR = join(TMP_ROOT, 'binaries')
 
-function compiledBinaryPath(target: BuildTarget): string {
+function compiledProxyBinaryPath(target: BuildTarget): string {
   return join(
     BINARIES_DIR,
     `browseros-server-${target.id}${target.os === 'windows' ? '.exe' : ''}`,
+  )
+}
+
+function compiledSidecarBinaryPath(target: BuildTarget): string {
+  return join(
+    BINARIES_DIR,
+    `browseros-server-real-${target.id}${target.os === 'windows' ? '.exe' : ''}`,
   )
 }
 
@@ -27,7 +35,7 @@ async function bundleServer(
   mkdirSync(BUNDLE_DIR, { recursive: true })
 
   const result = await Bun.build({
-    entrypoints: ['apps/server/src/index.ts'],
+    entrypoints: ['apps/server/src/proxy.ts', 'apps/server/src/index.ts'],
     outdir: BUNDLE_DIR,
     target: 'bun',
     minify: true,
@@ -54,18 +62,33 @@ async function compileTarget(
   target: BuildTarget,
   env: NodeJS.ProcessEnv,
   ci: boolean,
-): Promise<string> {
-  const binaryPath = compiledBinaryPath(target)
-  const args = [
+): Promise<{ proxyBinaryPath: string; sidecarBinaryPath: string }> {
+  const proxyBinaryPath = compiledProxyBinaryPath(target)
+  const sidecarBinaryPath = compiledSidecarBinaryPath(target)
+
+  // Compile proxy (as browseros-server-${target.id}.exe)
+  const proxyArgs = [
     'build',
     '--compile',
-    BUNDLE_ENTRY,
+    BUNDLE_ENTRY_PROXY,
     '--outfile',
-    binaryPath,
+    proxyBinaryPath,
     `--target=${target.bunTarget}`,
     '--external=node-pty',
   ]
-  await runCommand('bun', args, env)
+  await runCommand('bun', proxyArgs, env)
+
+  // Compile sidecar (as browseros-server-real-${target.id}.exe)
+  const sidecarArgs = [
+    'build',
+    '--compile',
+    BUNDLE_ENTRY_SIDECAR,
+    '--outfile',
+    sidecarBinaryPath,
+    `--target=${target.bunTarget}`,
+    '--external=node-pty',
+  ]
+  await runCommand('bun', sidecarArgs, env)
 
   if (target.os === 'windows') {
     if (ci) {
@@ -73,13 +96,18 @@ async function compileTarget(
     } else {
       await runCommand(
         'bun',
-        ['scripts/patch-windows-exe.ts', binaryPath],
+        ['scripts/patch-windows-exe.ts', proxyBinaryPath],
+        process.env,
+      )
+      await runCommand(
+        'bun',
+        ['scripts/patch-windows-exe.ts', sidecarBinaryPath],
         process.env,
       )
     }
   }
 
-  return binaryPath
+  return { proxyBinaryPath, sidecarBinaryPath }
 }
 
 export async function compileServerBinaries(
@@ -96,8 +124,12 @@ export async function compileServerBinaries(
 
   const compiled: CompiledServerBinary[] = []
   for (const target of targets) {
-    const binaryPath = await compileTarget(target, processEnv, ci)
-    compiled.push({ target, binaryPath })
+    const { proxyBinaryPath, sidecarBinaryPath } = await compileTarget(
+      target,
+      processEnv,
+      ci,
+    )
+    compiled.push({ target, proxyBinaryPath, sidecarBinaryPath })
   }
 
   rmSync(BUNDLE_DIR, { recursive: true, force: true })

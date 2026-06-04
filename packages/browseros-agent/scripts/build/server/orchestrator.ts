@@ -51,7 +51,8 @@ export async function runProdResourceBuild(argv: string[]): Promise<void> {
       )
       const staged = await stageCompiledArtifact(
         distRoot,
-        binary.binaryPath,
+        binary.proxyBinaryPath,
+        binary.sidecarBinaryPath,
         binary.target,
         buildConfig.version,
         rules,
@@ -85,7 +86,8 @@ export async function runProdResourceBuild(argv: string[]): Promise<void> {
       )
       const staged = await stageTargetArtifact(
         distRoot,
-        binary.binaryPath,
+        binary.proxyBinaryPath,
+        binary.sidecarBinaryPath,
         binary.target,
         rules,
         rootDir,

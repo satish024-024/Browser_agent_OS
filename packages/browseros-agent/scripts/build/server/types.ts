@@ -68,7 +68,8 @@ export interface ResourceManifest {
 
 export interface CompiledServerBinary {
   target: BuildTarget
-  binaryPath: string
+  proxyBinaryPath: string
+  sidecarBinaryPath: string
 }
 
 export interface StagedArtifact {

@@ -8,8 +8,8 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|---|---|---|---|
-| 1 | Exploration & Analysis | Map codebase, identify build configs and setup | None | PLANNED |
-| 2 | Sidecar Startup & Module Resolution | Fix `pino-pretty` runtime resolution crash on Bun | M1 | PLANNED |
+| 1 | Exploration & Analysis | Map codebase, identify build configs and setup | None | DONE |
+| 2 | Sidecar Startup & Module Resolution | Fix `pino-pretty` runtime resolution crash on Bun | M1 | IN_PROGRESS |
 | 3 | Proxy Stability & Deploy | Stabilize `browseros_server.exe` interception, deploy to targets | M2 | PLANNED |
 | 4 | Security & Safety Review | Audit logs, secrets, API keys | M3 | PLANNED |
 | 5 | ServiceNow Tasks Validation | Execute the 12 validation tasks and record results | M4 | PLANNED |

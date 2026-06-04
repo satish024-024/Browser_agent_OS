@@ -20,6 +20,20 @@ function serverDestinationPath(rootDir: string, target: BuildTarget): string {
   return join(rootDir, 'resources', 'bin', target.serverBinaryName)
 }
 
+function serverSidecarDestinationPath(
+  rootDir: string,
+  target: BuildTarget,
+): string {
+  const ext = target.os === 'windows' ? '.exe' : ''
+  const baseName = target.serverBinaryName.endsWith(ext)
+    ? target.serverBinaryName.slice(
+        0,
+        target.serverBinaryName.length - ext.length,
+      )
+    : target.serverBinaryName
+  return join(rootDir, 'resources', 'bin', `${baseName}_real${ext}`)
+}
+
 async function copyServerBinary(
   compiledBinaryPath: string,
   destinationPath: string,
@@ -34,15 +48,21 @@ async function copyServerBinary(
 
 async function createArtifactRoot(
   distRoot: string,
-  compiledBinaryPath: string,
+  compiledProxyPath: string,
+  compiledSidecarPath: string,
   target: BuildTarget,
 ): Promise<string> {
   const rootDir = artifactRoot(distRoot, target)
   await rm(rootDir, { recursive: true, force: true })
   await mkdir(rootDir, { recursive: true })
   await copyServerBinary(
-    compiledBinaryPath,
+    compiledProxyPath,
     serverDestinationPath(rootDir, target),
+    target,
+  )
+  await copyServerBinary(
+    compiledSidecarPath,
+    serverSidecarDestinationPath(rootDir, target),
     target,
   )
   return rootDir
@@ -117,7 +137,8 @@ async function stageLocalRule(
 
 export async function stageTargetArtifact(
   distRoot: string,
-  compiledBinaryPath: string,
+  compiledProxyPath: string,
+  compiledSidecarPath: string,
   target: BuildTarget,
   rules: ResourceRule[],
   sourceRoot: string,
@@ -125,7 +146,12 @@ export async function stageTargetArtifact(
   r2: R2Config,
   version: string,
 ): Promise<StagedArtifact> {
-  const rootDir = await createArtifactRoot(distRoot, compiledBinaryPath, target)
+  const rootDir = await createArtifactRoot(
+    distRoot,
+    compiledProxyPath,
+    compiledSidecarPath,
+    target,
+  )
 
   for (const rule of rules) {
     await stageRule(rootDir, sourceRoot, rule, target, client, r2)
@@ -136,13 +162,19 @@ export async function stageTargetArtifact(
 
 export async function stageCompiledArtifact(
   distRoot: string,
-  compiledBinaryPath: string,
+  compiledProxyPath: string,
+  compiledSidecarPath: string,
   target: BuildTarget,
   version: string,
   rules: ResourceRule[] = [],
   sourceRoot = process.cwd(),
 ): Promise<StagedArtifact> {
-  const rootDir = await createArtifactRoot(distRoot, compiledBinaryPath, target)
+  const rootDir = await createArtifactRoot(
+    distRoot,
+    compiledProxyPath,
+    compiledSidecarPath,
+    target,
+  )
 
   for (const rule of rules) {
     if (rule.source.type !== 'local') {

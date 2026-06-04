@@ -16,7 +16,10 @@ import { CONTENT_LIMITS } from '@browseros/shared/constants/limits'
 import type { LoggerInterface, LogLevel } from '@browseros/shared/types/logger'
 import pino from 'pino'
 
-const isDev = process.env.NODE_ENV === 'development'
+const execPathLower = process.execPath.toLowerCase()
+const isCompiled =
+  !execPathLower.endsWith('bun') && !execPathLower.endsWith('bun.exe')
+const isDev = process.env.NODE_ENV === 'development' && !isCompiled
 const LOG_FILE_NAME = 'browseros-server.log'
 const LOG_FILE_MAX_AGE_MS = 24 * 60 * 60 * 1000 // 1 day
 
