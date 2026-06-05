@@ -64,6 +64,7 @@ import {
   update_tab_group,
 } from './tab-groups'
 import { servicenow_ask, servicenow_search } from './rag'
+import { search_web } from './search'
 import { createRegistry } from './tool-registry'
 import {
   activate_window,
@@ -152,6 +153,9 @@ export const registry = createRegistry([
 
   // Info (1)
   browseros_info,
+
+  // Web Search (1)
+  search_web,
 
   // Nudges (2)
   suggest_schedule,
