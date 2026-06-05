@@ -281,7 +281,7 @@ export class ChatService {
         count: request.toolApprovalResponses.length,
       })
       return wrapWithHeartbeat(
-        createAgentUIStreamResponse({
+        await createAgentUIStreamResponse({
           agent: session.agent.toolLoopAgent,
           uiMessages: filterValidMessages(session.agent.messages),
           abortSignal,
@@ -336,7 +336,7 @@ export class ChatService {
     )
 
     return wrapWithHeartbeat(
-      createAgentUIStreamResponse({
+      await createAgentUIStreamResponse({
         agent: session.agent.toolLoopAgent,
         uiMessages: promptUiMessages,
         abortSignal,

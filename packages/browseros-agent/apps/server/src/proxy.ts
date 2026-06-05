@@ -19,7 +19,23 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
-if (configPath) {
+// Parse CLI args first (highest precedence)
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i]
+  if (arg.startsWith('--cdp-port=')) {
+    cdpPort = parseInt(arg.split('=')[1], 10)
+  } else if (arg === '--cdp-port' && i + 1 < args.length) {
+    cdpPort = parseInt(args[i + 1], 10)
+  }
+}
+
+// Fallback to env variable
+if (cdpPort === null && process.env.BROWSEROS_CDP_PORT) {
+  cdpPort = parseInt(process.env.BROWSEROS_CDP_PORT, 10)
+}
+
+// Fallback to config file
+if (cdpPort === null && configPath) {
   // Strip surrounding quotes which might be present on Windows/CLI
   configPath = configPath.replace(/^['"]|['"]$/g, '')
   try {
@@ -34,23 +50,6 @@ if (configPath) {
   } catch (e) {
     console.warn(`[Proxy] Failed to read config file to extract CDP port:`, e)
   }
-}
-
-// Fallback to CLI args if not specified in config file
-if (cdpPort === null) {
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i]
-    if (arg.startsWith('--cdp-port=')) {
-      cdpPort = parseInt(arg.split('=')[1], 10)
-    } else if (arg === '--cdp-port' && i + 1 < args.length) {
-      cdpPort = parseInt(args[i + 1], 10)
-    }
-  }
-}
-
-// Fallback to env variable
-if (cdpPort === null && process.env.BROWSEROS_CDP_PORT) {
-  cdpPort = parseInt(process.env.BROWSEROS_CDP_PORT, 10)
 }
 
 // Fallback to default
@@ -289,10 +288,10 @@ async function retrieveRAG(question: string): Promise<string | null> {
   }
 }
 
-const server = Bun.serve({
+const server: import('bun').Server<unknown> = Bun.serve({
   port: serverPort,
   idleTimeout: 0,
-  async fetch(req) {
+  async fetch(req: Request): Promise<Response | undefined> {
     const url = new URL(req.url)
     const targetUrl = `http://127.0.0.1:${realPort}${url.pathname}${url.search}`
 
@@ -356,7 +355,7 @@ const server = Bun.serve({
         console.log(
           `[Proxy] Forwarding /chat request to real sidecar at port ${realPort}`,
         )
-        const response = await fetch(targetUrl, {
+        const response = await globalThis.fetch(targetUrl, {
           method: 'POST',
           headers: req.headers,
           body: JSON.stringify(body),
@@ -394,7 +393,7 @@ const server = Bun.serve({
         body = req.body
       }
 
-      const response = await fetch(targetUrl, {
+      const response = await globalThis.fetch(targetUrl, {
         method: req.method,
         headers,
         body,

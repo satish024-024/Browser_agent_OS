@@ -276,7 +276,11 @@ function parseRuntimeEnv(): PartialConfig {
 }
 
 function validateInlinedEnv(): ConfigResult<void> {
-  const runtimeEnv = process.env.BROWSEROS_ENV || process.env.NODE_ENV
+  const runtimeEnv =
+    process.env.BROWSEROS_ENV ||
+    (process.env.NODE_ENV === 'production' && INLINED_ENV.CODEGEN_SERVICE_URL
+      ? 'production'
+      : 'development')
   if (runtimeEnv !== 'production') {
     return { ok: true, value: undefined }
   }
