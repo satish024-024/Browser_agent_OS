@@ -76,6 +76,7 @@ const VERB_OVERRIDES: Record<string, string> = {
 
   // Web
   web_search: 'Searched the web',
+  search_web: 'Searched the web',
   web_fetch: 'Fetched URL',
 
   // Klavis / external apps (Strata)
@@ -178,6 +179,7 @@ const SUBJECT_EXTRACTORS: Record<string, SubjectExtractor> = {
 
   // Search queries
   web_search: (i) => quote(stringField(i, 'query', 'q')),
+  search_web: (i) => quote(stringField(i, 'query', 'q')),
   search_history: (i) => quote(stringField(i, 'query', 'text')),
   search_bookmarks: (i) => quote(stringField(i, 'query', 'text')),
   search_memory: (i) => quote(stringField(i, 'query', 'q')),
