@@ -1,23 +1,95 @@
 import { spawn } from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
 
 // 1. Determine port logic
 const args = Bun.argv.slice(2)
 let serverPort = 9200
 let realPort = 9201
+let cdpPort: number | null = null
 
-// Update args
-const newArgs = args.map((arg) => {
+// First check if a config file is specified
+let configPath: string | null = null
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i]
+  if (arg.startsWith('--config=')) {
+    configPath = arg.split('=')[1]
+  } else if (arg === '--config' && i + 1 < args.length) {
+    configPath = args[i + 1]
+  }
+}
+
+if (configPath) {
+  // Strip surrounding quotes which might be present on Windows/CLI
+  configPath = configPath.replace(/^['"]|['"]$/g, '')
+  try {
+    const absPath = path.isAbsolute(configPath) ? configPath : path.resolve(process.cwd(), configPath)
+    if (fs.existsSync(absPath)) {
+      const content = fs.readFileSync(absPath, 'utf-8')
+      const cfg = JSON.parse(content)
+      if (cfg.ports?.cdp) {
+        cdpPort = parseInt(cfg.ports.cdp, 10)
+      }
+    }
+  } catch (e) {
+    console.warn(`[Proxy] Failed to read config file to extract CDP port:`, e)
+  }
+}
+
+// Fallback to CLI args if not specified in config file
+if (cdpPort === null) {
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]
+    if (arg.startsWith('--cdp-port=')) {
+      cdpPort = parseInt(arg.split('=')[1], 10)
+    } else if (arg === '--cdp-port' && i + 1 < args.length) {
+      cdpPort = parseInt(args[i + 1], 10)
+    }
+  }
+}
+
+// Fallback to env variable
+if (cdpPort === null && process.env.BROWSEROS_CDP_PORT) {
+  cdpPort = parseInt(process.env.BROWSEROS_CDP_PORT, 10)
+}
+
+// Fallback to default
+if (cdpPort === null) {
+  cdpPort = 9100
+}
+
+// Build newArgs for sidecar robustly
+const newArgs: string[] = []
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i]
   if (arg.startsWith('--server-port=')) {
     const portStr = arg.split('=')[1]
     serverPort = parseInt(portStr, 10)
     realPort = serverPort === 9200 ? 9201 : serverPort + 10
-    return `--server-port=${realPort}`
+    newArgs.push(`--server-port=${realPort}`)
+  } else if (arg === '--server-port' && i + 1 < args.length) {
+    serverPort = parseInt(args[i + 1], 10)
+    realPort = serverPort === 9200 ? 9201 : serverPort + 10
+    newArgs.push('--server-port', String(realPort))
+    i++
+  } else if (arg.startsWith('--cdp-port=')) {
+    newArgs.push(`--cdp-port=${cdpPort}`)
+  } else if (arg === '--cdp-port' && i + 1 < args.length) {
+    newArgs.push('--cdp-port', String(cdpPort))
+    i++
+  } else {
+    newArgs.push(arg)
   }
-  return arg
-})
+}
 
-if (!args.some((arg) => arg.startsWith('--server-port='))) {
+// Ensure --server-port is present
+if (!newArgs.some((arg) => arg.startsWith('--server-port=') || arg === '--server-port')) {
   newArgs.push(`--server-port=${realPort}`)
+}
+
+// Ensure --cdp-port is present
+if (!newArgs.some((arg) => arg.startsWith('--cdp-port=') || arg === '--cdp-port')) {
+  newArgs.push(`--cdp-port=${cdpPort}`)
 }
 
 const execPath = process.execPath
@@ -38,6 +110,26 @@ child.on('exit', (code) => {
   console.log(`[Proxy] Real sidecar exited with code ${code}`)
   process.exit(code ?? 0)
 })
+
+// Sidecar readiness handshake check
+const readinessPromise = (async () => {
+  const healthUrl = `http://127.0.0.1:${realPort}/health`
+  for (let i = 0; i < 30; i++) {
+    try {
+      console.log(`[Proxy] Checking sidecar health (attempt ${i + 1}/30)...`)
+      const res = await fetch(healthUrl)
+      if (res.ok) {
+        console.log(`[Proxy] Sidecar health check passed.`)
+        return true
+      }
+    } catch (err) {
+      // Ignore connection errors/refusals while booting
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+  console.error(`[Proxy] Sidecar health check failed after 30 attempts.`)
+  return false
+})()
 
 // Detect ServiceNow-related queries via platform keywords and ITSM intent phrases
 function isServiceNowRelated(message: string): boolean {
@@ -203,6 +295,13 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url)
     const targetUrl = `http://127.0.0.1:${realPort}${url.pathname}${url.search}`
+
+    // Wait for sidecar readiness before forwarding traffic
+    const isReady = await readinessPromise
+    if (!isReady) {
+      console.error(`[Proxy] Sidecar is not ready. Rejecting request: ${url.pathname}`)
+      return new Response('Sidecar Not Ready', { status: 503 })
+    }
 
     // Intercept chat request
     if (req.method === 'POST' && url.pathname === '/chat') {
