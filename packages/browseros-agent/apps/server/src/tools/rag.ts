@@ -52,6 +52,12 @@ async function retrieveChunks(
       throw new Error(`RAG server error ${res.status}: ${text}`)
     }
     return (await res.json()) as RetrieveResponse
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('fetch failed') || msg.includes('ECONNREFUSED') || msg.includes('Connection refused')) {
+      throw new Error(`RAG server connection failed on ${RAG_BASE_URL}: ${msg}`)
+    }
+    throw err
   } finally {
     clearTimeout(timeoutId)
   }
@@ -88,14 +94,53 @@ function formatChunksAsContext(
   )
 }
 
-const OFFLINE_ERROR =
-  'The ServiceNow knowledge base server is offline (http://127.0.0.1:8000). ' +
-  'Start it with:\n  cd d:\\knowledge_base\\knowledge_base\n' +
-  '  .venv\\Scripts\\uvicorn local_rag_server:app --host 127.0.0.1 --port 8000'
-
-function isOfflineError(err: unknown): boolean {
+function differentiateError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err)
-  return msg.includes('fetch failed') || msg.includes('ECONNREFUSED') || msg.includes('aborted')
+
+  // 1. Connection failed to RAG server
+  if (
+    msg.includes('RAG server connection failed') ||
+    msg.includes('fetch failed') ||
+    msg.includes('ECONNREFUSED') ||
+    msg.includes('aborted')
+  ) {
+    return (
+      'The ServiceNow local Knowledge Base server is offline (http://127.0.0.1:8000).\n' +
+      'Please start it with the following commands:\n' +
+      '  cd D:\\knowledge_base\n' +
+      '  .venv\\Scripts\\uvicorn local_rag_server:app --host 127.0.0.1 --port 8000'
+    )
+  }
+
+  // 2. Ollama is offline (RAG server is up but returned 500 containing Ollama error)
+  if (
+    msg.includes('Ollama embedding failed') ||
+    msg.includes('11434') ||
+    msg.includes('NewConnectionError') ||
+    msg.includes('WinError 10061')
+  ) {
+    return (
+      'Ollama service (port 11434) is offline or unreachable from the RAG server.\n' +
+      'Please start the Ollama service on your machine (e.g. run "ollama serve" in PowerShell).'
+    )
+  }
+
+  // 3. ChromaDB is locked / offline
+  if (
+    msg.includes('Chroma') ||
+    msg.includes('chromadb') ||
+    msg.includes('database') ||
+    msg.includes('Sqlite') ||
+    msg.includes('sqlite3')
+  ) {
+    return (
+      'ChromaDB database issue detected. The database may be locked, corrupted, or unreachable.\n' +
+      `Raw error: ${msg}`
+    )
+  }
+
+  // 4. Default retrieval / format failure
+  return `ServiceNow knowledge retrieval failed: ${msg}`
 }
 
 // ─── servicenow_search ────────────────────────────────────────────────────────
@@ -157,12 +202,7 @@ export const servicenow_search = defineTool({
 
       response.text(formatted)
     } catch (err) {
-      if (isOfflineError(err)) {
-        response.error(OFFLINE_ERROR)
-      } else {
-        const msg = err instanceof Error ? err.message : String(err)
-        response.error(`ServiceNow search failed: ${msg}`)
-      }
+      response.error(differentiateError(err))
     }
   },
 })
@@ -214,12 +254,7 @@ export const servicenow_ask = defineTool({
       const context = formatChunksAsContext(chunks, args.question)
       response.text(context)
     } catch (err) {
-      if (isOfflineError(err)) {
-        response.error(OFFLINE_ERROR)
-      } else {
-        const msg = err instanceof Error ? err.message : String(err)
-        response.error(`ServiceNow knowledge retrieval failed: ${msg}`)
-      }
+      response.error(differentiateError(err))
     }
   },
 })

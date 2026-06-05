@@ -40,6 +40,7 @@ import { createShutdownRoute } from './routes/shutdown'
 import { createSkillsRoutes } from './routes/skills'
 import { createSoulRoutes } from './routes/soul'
 import { createStatusRoute } from './routes/status'
+import { createSystemStatusRoute } from './routes/system-status'
 import { createTerminalRoutes } from './routes/terminal'
 import { GlobalAclPolicyService } from './services/acl/global-acl-policy'
 import {
@@ -194,6 +195,7 @@ export async function createHttpServer(config: HttpServerConfig) {
       }),
     )
     .route('/status', createStatusRoute({ browser }))
+    .route('/system_status', createSystemStatusRoute({ browser }))
     .route('/soul', createSoulRoutes())
     .route('/memory', createMemoryRoutes())
     .route('/skills', createSkillsRoutes())

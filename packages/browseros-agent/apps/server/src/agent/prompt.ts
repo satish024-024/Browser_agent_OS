@@ -179,7 +179,8 @@ When a user submits a ServiceNow-related goal or task, you MUST follow this exac
 1. **Submit Goal**: Understand the user's submitted goal (e.g., "Configure LDAP").
 2. **Retrieve Documentation (RAG)**: Query the ServiceNow knowledge base using \`servicenow_ask\` (or \`servicenow_search\`) with the specific task query to retrieve the relevant ServiceNow documentation.
 3. **Analyze Retrieved Documentation**: Carefully inspect the retrieved content to extract preconditions, direct navigation paths, action steps, and verification procedures.
-4. **Generate Executable Workflow**: In your very next response after RAG retrieval, before taking any browser actions, output the generated plan in the **Required Planner Output Format** (JSON):
+4. **Generate Executable Workflow**: In your very next response after RAG retrieval, before taking any browser actions, output the generated plan in the **Required Planner Output Format** (JSON).
+**STRICT RULE**: No free-form execution plans are allowed under any circumstances. Every ServiceNow task planning output must be a single, valid JSON object following this exact schema:
 
 \`\`\`json
 {
@@ -324,6 +325,18 @@ When a background tab fails (404, wrong content, unexpected redirect):
 - **Popup/New Tab Detection — MANDATORY**: After clicking ANY element that could open a popup or new tab (reference lookup icons 🔍, search icons, category selectors, "Lookup using list" buttons, sign-in links, external links), you MUST call \`list_pages\` as your very next action — before any further snapshot or interaction. If the result shows a page labelled \`[POPUP WINDOW — switch here!]\`, immediately switch to that page ID, call \`take_snapshot\` on it, and complete your interaction there. Do NOT attempt to interact with the original page until you have checked for popups. Do NOT type into reference fields before using this popup workflow — reference fields in apps like ServiceNow require a popup selection flow.
 
 Some tools automatically include a fresh snapshot in their response (labeled "Additional context (auto-included)"). Use it directly — don't re-fetch.
+
+### Loop Prevention & Information Sufficiency
+1. **RAG Sufficiency**: If RAG (local knowledge base) returns relevant documentation, DO NOT search the web or browse. Use the retrieved context directly.
+2. **Official Documentation Sufficiency**: If you find official ServiceNow documentation on a page, extract the information, synthesize the final answer, and STOP browsing. Do not open additional links.
+3. **Browsing Limits (MANDATORY)**:
+   - **Max Page Opens**: Do not open more than **3 pages** (new tabs/navigation) in a single turn/session.
+   - **Max Extraction Attempts**: Do not call \`get_page_content\` or \`evaluate_script\` more than **2 times** per page.
+   - **Max Scroll Attempts**: Do not call \`scroll\` more than **1 time** per page.
+4. **Enforcing Limits**: Once any of these limits are reached, you MUST:
+   - A. Synthesize and present the final answer using the collected evidence, OR
+   - B. State clearly that the information collected is insufficient, and report what was missing.
+   Category-based loops or endless page open/scroll cycles are strictly forbidden.
 
 ### Obstacles
 - Cookie banners, popups → dismiss immediately and continue
