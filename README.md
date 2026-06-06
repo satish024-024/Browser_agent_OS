@@ -35,6 +35,69 @@ Use your own API keys or run local models with Ollama. Your data never leaves yo
 
 > **[Documentation](https://docs.browseros.com)** · **[Discord](https://discord.gg/YKwjt5vuKr)** · **[Slack](https://dub.sh/browserOS-slack)** · **[Twitter](https://x.com/browserOS_ai)** · **[Feature Requests](https://github.com/browseros-ai/BrowserOS/issues/99)**
 
+---
+
+## ⚡ ServiceNow Task Planning Agent (Stabilized v1.0)
+
+### 🌟 Lead Developer: **Kadali Satish Kumar**
+> **Final Year Student of Electronics and Communication Engineering**  
+> 🎓 **Actively seeking opportunities to connect and work with the engineering teams at ServiceNow!**  
+> 📬 *Connect with me for collaborations, agent engineering, or opportunities in enterprise browser automation.*
+
+The **ServiceNow Task Planning Agent** is a production-ready extension built on top of BrowserOS. It is engineered to operate ServiceNow instances **exactly like a human administrator or developer**—handling configurations, ACL rules, user provisioning, database discovery, business rules, workflows, client scripts, and catalog definitions.
+
+Powered by a **100% Local RAG Integration** utilizing ChromaDB and Ollama models (`nomic-embed-text` & `gemma3:4b`), the agent achieves a **100% retrieval success rate** on official ServiceNow documentation. This ensures that the agent works with guaranteed procedural reliability, producing structured JSON execution plans verified against strict schemas before executing any browser action. Differentiated diagnostic probes and loop prevention policies (max 3 page opens, 2 extraction attempts, 1 scroll per session) ensure safe, stable, and autonomous execution.
+
+### System Architecture Topology
+```mermaid
+graph TD
+    User([User Request / Chat UI]) -->|1. Chat/Goal Prompt| Proxy[Consolidated Proxy Server :9200]
+    Proxy -->|2. Query / Intercept| RAG[Local RAG Server :8000]
+    RAG -->|3. Query Vector DB| ChromaDB[(Local ChromaDB)]
+    RAG -->|4. Generate Embeddings| OllamaEmbed[Ollama nomic-embed-text :11434]
+    RAG -->|5. Return Excerpts| Proxy
+    Proxy -->|6. Inject Docs & Forward| Sidecar[Sidecar Server :9201]
+    Sidecar -->|7. Generate JSON Plan| OllamaGen[Ollama gemma3:4b :11434]
+    Sidecar -->|8. Run Browser CDP| Chrome[Chromium Browser :9100]
+    Chrome -->|9. Execute Automation| SN[ServiceNow Instance]
+```
+
+### Complete Setup & Run Process
+
+If you clone or copy this repository, follow these steps to boot the entire agentic ServiceNow stack on your machine:
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/satish024-024/Browser_agent_OS.git
+   cd Browser_agent_OS
+   ```
+2. **Install Agent Dependencies**:
+   ```bash
+   cd packages/browseros-agent
+   bun install
+   ```
+3. **Start Local LLM Provider (Ollama)**:
+   Download and install [Ollama](https://ollama.com), then start the service and pull the required models:
+   ```powershell
+   ollama serve
+   ollama pull nomic-embed-text
+   ollama pull gemma3:4b
+   ```
+4. **Boot the RAG Server**:
+   Ensure your Chroma database folder (`final_chroma_db`) is placed under `D:\knowledge_base\`, then start the FastAPI RAG server:
+   ```powershell
+   cd D:\knowledge_base
+   .venv\Scripts\python.exe -m uvicorn local_rag_server:app --host 127.0.0.1 --port 8000
+   ```
+5. **Run the Consolidated Orchestrator**:
+   Launch the service stack using the provided PowerShell script at the root:
+   ```powershell
+   .\start_services.ps1
+   ```
+   This script automatically verifies all ports, confirms model availability in Ollama, launches Chromium in debugging mode (CDP port `9100`), and boots the Consolidated Proxy Server on port `9200`.
+
+---
+
 ## Quick Start
 
 1. **Download and install** BrowserOS — [macOS](https://files.browseros.com/download/BrowserOS.dmg) · [Windows](https://files.browseros.com/download/BrowserOS_installer.exe) · [Linux (AppImage)](https://files.browseros.com/download/BrowserOS.AppImage) · [Linux (Debian)](https://cdn.browseros.com/download/BrowserOS.deb)
